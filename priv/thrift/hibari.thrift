@@ -49,7 +49,7 @@ struct DeleteOptions {
   3: optional bool          must_not_exist,
 }
 
-struct ReadOptions {
+struct GetOptions {
   1: optional Timestamp     test_set,
   2: optional bool          is_witness,
   3: optional bool          get_all_attribs,
@@ -57,12 +57,20 @@ struct ReadOptions {
   5: optional bool          must_not_exist,
 }
 
+struct GetManyOptions {
+  1: optional bool          is_witness,
+  2: optional bool          get_all_attribs,
+  3: optional binary        binary_prefix,
+  4: optional i64           max_bytes,
+  5: optional i32           max_num,
+}
+
 struct DoTransaction { }
 
 struct DoAdd {
   1: required binary key,
   2: required binary value,
-  3: optional list<Property> properties,
+  3: optional list<Property> properties,   // @TODO Change to map<binary, binary> ?
   4: required AddOptions     options,
 }
 
@@ -94,13 +102,13 @@ struct DoDelete {
 
 struct DoGet {
   1: required binary key,
-  2: optional ReadOptions options,
+  2: optional GetOptions options,
 }
 
 struct DoGetMany {
   1: required binary key,
   2: required i32    max_keys,
-  3: optional ReadOptions options,
+  3: optional GetManyOptions options,
 }
 
 union Op {
@@ -158,7 +166,7 @@ exception TSErrorException {
   2: required Timestamp timestamp,
 }
 
-exception KeyExistisException {
+exception KeyExistsException {
   1: required binary key,
   2: required Timestamp timestamp,
 }
@@ -167,14 +175,15 @@ exception KeyNotExistsException {
   1: required binary key,
 }
 
-exception InvalidOptionPresentException {
-  1: required string option,
-  2: required string value,
-}
+exception InvalidOptionPresentException {}
 
 exception TransactionFailureException {
   1: required i32        do_op_index,
-  2: required TxnFailure failure,
+  2: required TxnFailure failure,       // @TODO: Change to "reason"
+}
+
+exception UnexpectedError {
+  1: optional string error,
 }
 
 service Hibari {
@@ -190,7 +199,7 @@ service Hibari {
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
               3: InvalidOptionPresentException invalid_opt,
-              4: KeyExistisException key_exsits)
+              4: KeyExistsException key_exsits)
 
   /**
    * replace
@@ -250,7 +259,7 @@ service Hibari {
    */
   GetResponse get_kv(1: required string table,
                      2: required binary key,
-                     3: required ReadOptions options)
+                     3: required GetOptions options)
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
               3: KeyNotExistsException key_not_exsits,
@@ -262,7 +271,7 @@ service Hibari {
   GetManyResponse get_many(1: required string table,
                            2: required binary key,
                            3: required i32    max_keys,
-                           4: required ReadOptions options)
+                           4: required GetManyOptions options)
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
               3: TSErrorException ts_error)
