@@ -34,12 +34,20 @@ struct_info('DeleteOptions') ->
           {3, bool}]}
 ;
 
-struct_info('ReadOptions') ->
+struct_info('GetOptions') ->
   {struct, [{1, i64},
           {2, bool},
           {3, bool},
           {4, bool},
           {5, bool}]}
+;
+
+struct_info('GetManyOptions') ->
+  {struct, [{1, bool},
+          {2, bool},
+          {3, string},
+          {4, i64},
+          {5, i32}]}
 ;
 
 struct_info('DoTransaction') ->
@@ -81,13 +89,13 @@ struct_info('DoDelete') ->
 
 struct_info('DoGet') ->
   {struct, [{1, string},
-          {2, {struct, {'hibari_types', 'ReadOptions'}}}]}
+          {2, {struct, {'hibari_types', 'GetOptions'}}}]}
 ;
 
 struct_info('DoGetMany') ->
   {struct, [{1, string},
           {2, i32},
-          {3, {struct, {'hibari_types', 'ReadOptions'}}}]}
+          {3, {struct, {'hibari_types', 'GetManyOptions'}}}]}
 ;
 
 struct_info('Op') ->
@@ -150,7 +158,7 @@ struct_info('TSErrorException') ->
           {2, i64}]}
 ;
 
-struct_info('KeyExistisException') ->
+struct_info('KeyExistsException') ->
   {struct, [{1, string},
           {2, i64}]}
 ;
@@ -160,13 +168,16 @@ struct_info('KeyNotExistsException') ->
 ;
 
 struct_info('InvalidOptionPresentException') ->
-  {struct, [{1, string},
-          {2, string}]}
+  {struct, []}
 ;
 
 struct_info('TransactionFailureException') ->
   {struct, [{1, i32},
           {2, {struct, {'hibari_types', 'TxnFailure'}}}]}
+;
+
+struct_info('UnexpectedError') ->
+  {struct, [{1, string}]}
 ;
 
 struct_info(_) -> erlang:error(function_clause).
@@ -195,12 +206,20 @@ struct_info_ext('DeleteOptions') ->
           {3, optional, bool, 'must_not_exist', undefined}]}
 ;
 
-struct_info_ext('ReadOptions') ->
+struct_info_ext('GetOptions') ->
   {struct, [{1, optional, i64, 'test_set', undefined},
           {2, optional, bool, 'is_witness', undefined},
           {3, optional, bool, 'get_all_attribs', undefined},
           {4, optional, bool, 'must_exist', undefined},
           {5, optional, bool, 'must_not_exist', undefined}]}
+;
+
+struct_info_ext('GetManyOptions') ->
+  {struct, [{1, optional, bool, 'is_witness', undefined},
+          {2, optional, bool, 'get_all_attribs', undefined},
+          {3, optional, string, 'binary_prefix', undefined},
+          {4, optional, i64, 'max_bytes', undefined},
+          {5, optional, i32, 'max_num', undefined}]}
 ;
 
 struct_info_ext('DoTransaction') ->
@@ -242,13 +261,13 @@ struct_info_ext('DoDelete') ->
 
 struct_info_ext('DoGet') ->
   {struct, [{1, required, string, 'key', undefined},
-          {2, optional, {struct, {'hibari_types', 'ReadOptions'}}, 'options', #'ReadOptions'{}}]}
+          {2, optional, {struct, {'hibari_types', 'GetOptions'}}, 'options', #'GetOptions'{}}]}
 ;
 
 struct_info_ext('DoGetMany') ->
   {struct, [{1, required, string, 'key', undefined},
           {2, required, i32, 'max_keys', undefined},
-          {3, optional, {struct, {'hibari_types', 'ReadOptions'}}, 'options', #'ReadOptions'{}}]}
+          {3, optional, {struct, {'hibari_types', 'GetManyOptions'}}, 'options', #'GetManyOptions'{}}]}
 ;
 
 struct_info_ext('Op') ->
@@ -311,7 +330,7 @@ struct_info_ext('TSErrorException') ->
           {2, required, i64, 'timestamp', undefined}]}
 ;
 
-struct_info_ext('KeyExistisException') ->
+struct_info_ext('KeyExistsException') ->
   {struct, [{1, required, string, 'key', undefined},
           {2, required, i64, 'timestamp', undefined}]}
 ;
@@ -321,13 +340,16 @@ struct_info_ext('KeyNotExistsException') ->
 ;
 
 struct_info_ext('InvalidOptionPresentException') ->
-  {struct, [{1, required, string, 'option', undefined},
-          {2, required, string, 'value', undefined}]}
+  {struct, []}
 ;
 
 struct_info_ext('TransactionFailureException') ->
   {struct, [{1, required, i32, 'do_op_index', undefined},
           {2, required, {struct, {'hibari_types', 'TxnFailure'}}, 'failure', #'TxnFailure'{}}]}
+;
+
+struct_info_ext('UnexpectedError') ->
+  {struct, [{1, optional, string, 'error', undefined}]}
 ;
 
 struct_info_ext(_) -> erlang:error(function_clause).

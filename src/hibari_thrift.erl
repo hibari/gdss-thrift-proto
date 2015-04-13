@@ -28,7 +28,7 @@ function_info('add_kv', exceptions) ->
   {struct, [{1, {struct, {'hibari_types', 'ServiceNotAvailableException'}}},
           {2, {struct, {'hibari_types', 'TimedOutException'}}},
           {3, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
-          {4, {struct, {'hibari_types', 'KeyExistisException'}}}]}
+          {4, {struct, {'hibari_types', 'KeyExistsException'}}}]}
 ;
 % replace_kv(This, Table, Key, Value, Properties, Options)
 function_info('replace_kv', params_type) ->
@@ -99,7 +99,7 @@ function_info('delete_kv', exceptions) ->
 function_info('get_kv', params_type) ->
   {struct, [{1, string},
           {2, string},
-          {3, {struct, {'hibari_types', 'ReadOptions'}}}]}
+          {3, {struct, {'hibari_types', 'GetOptions'}}}]}
 ;
 function_info('get_kv', reply_type) ->
   {struct, {'hibari_types', 'GetResponse'}};
@@ -114,7 +114,7 @@ function_info('get_many', params_type) ->
   {struct, [{1, string},
           {2, string},
           {3, i32},
-          {4, {struct, {'hibari_types', 'ReadOptions'}}}]}
+          {4, {struct, {'hibari_types', 'GetManyOptions'}}}]}
 ;
 function_info('get_many', reply_type) ->
   {struct, {'hibari_types', 'GetManyResponse'}};

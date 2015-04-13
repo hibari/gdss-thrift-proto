@@ -32,14 +32,23 @@
                           'must_not_exist' :: boolean()}).
 -type 'DeleteOptions'() :: #'DeleteOptions'{}.
 
-%% struct 'ReadOptions'
+%% struct 'GetOptions'
 
--record('ReadOptions', {'test_set' :: integer(),
-                        'is_witness' :: boolean(),
-                        'get_all_attribs' :: boolean(),
-                        'must_exist' :: boolean(),
-                        'must_not_exist' :: boolean()}).
--type 'ReadOptions'() :: #'ReadOptions'{}.
+-record('GetOptions', {'test_set' :: integer(),
+                       'is_witness' :: boolean(),
+                       'get_all_attribs' :: boolean(),
+                       'must_exist' :: boolean(),
+                       'must_not_exist' :: boolean()}).
+-type 'GetOptions'() :: #'GetOptions'{}.
+
+%% struct 'GetManyOptions'
+
+-record('GetManyOptions', {'is_witness' :: boolean(),
+                           'get_all_attribs' :: boolean(),
+                           'binary_prefix' :: string() | binary(),
+                           'max_bytes' :: integer(),
+                           'max_num' :: integer()}).
+-type 'GetManyOptions'() :: #'GetManyOptions'{}.
 
 %% struct 'DoTransaction'
 
@@ -87,14 +96,14 @@
 %% struct 'DoGet'
 
 -record('DoGet', {'key' :: string() | binary(),
-                  'options' :: 'ReadOptions'()}).
+                  'options' :: 'GetOptions'()}).
 -type 'DoGet'() :: #'DoGet'{}.
 
 %% struct 'DoGetMany'
 
 -record('DoGetMany', {'key' :: string() | binary(),
                       'max_keys' :: integer(),
-                      'options' :: 'ReadOptions'()}).
+                      'options' :: 'GetManyOptions'()}).
 -type 'DoGetMany'() :: #'DoGetMany'{}.
 
 %% struct 'Op'
@@ -168,11 +177,11 @@
                              'timestamp' :: integer()}).
 -type 'TSErrorException'() :: #'TSErrorException'{}.
 
-%% struct 'KeyExistisException'
+%% struct 'KeyExistsException'
 
--record('KeyExistisException', {'key' :: string() | binary(),
-                                'timestamp' :: integer()}).
--type 'KeyExistisException'() :: #'KeyExistisException'{}.
+-record('KeyExistsException', {'key' :: string() | binary(),
+                               'timestamp' :: integer()}).
+-type 'KeyExistsException'() :: #'KeyExistsException'{}.
 
 %% struct 'KeyNotExistsException'
 
@@ -181,8 +190,7 @@
 
 %% struct 'InvalidOptionPresentException'
 
--record('InvalidOptionPresentException', {'option' :: string() | binary(),
-                                          'value' :: string() | binary()}).
+-record('InvalidOptionPresentException', {}).
 -type 'InvalidOptionPresentException'() :: #'InvalidOptionPresentException'{}.
 
 %% struct 'TransactionFailureException'
@@ -190,5 +198,10 @@
 -record('TransactionFailureException', {'do_op_index' :: integer(),
                                         'failure' = #'TxnFailure'{} :: 'TxnFailure'()}).
 -type 'TransactionFailureException'() :: #'TransactionFailureException'{}.
+
+%% struct 'UnexpectedError'
+
+-record('UnexpectedError', {'error' :: string() | binary()}).
+-type 'UnexpectedError'() :: #'UnexpectedError'{}.
 
 -endif.
