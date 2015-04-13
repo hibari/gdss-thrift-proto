@@ -76,13 +76,14 @@ add_kv(Table, Key, Value, PropList, #'AddOptions'{}=Opts) ->
                 {ok, TS} ->
                     TS;
                 {key_exists, TS} ->
-                    {key_exists, TS};
+                    throw(#'KeyExistsException'{key=Key, timestamp=TS});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
-                    timeout;
+                    throw(#'TimedOutException'{});
                 Unknown ->
-                    Unknown
+                    Error = lists:flatten(io_lib:format("~p", [Unknown])),
+                    throw(#'UnexpectedError'{error=Error})
             end
     end.
 
@@ -98,16 +99,17 @@ replace_kv(Table, Key, Value, PropList, #'UpdateOptions'{}=Opts) ->
                                             Properties ++ WriteOptions, ?TIMEOUT) of
                 {ok, TS} ->
                     TS;
-                {key_not_exists, TS} ->
-                    {key_exists, TS};
+                key_not_exists ->
+                    throw(#'KeyNotExistsException'{key=Key});
                 {ts_error, TS} ->
-                    {ts_error, TS};
+                    throw(#'TSErrorException'{key=Key, timestamp=TS});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
-                    timeout;
+                    throw(#'TimedOutException'{});
                 Unknown ->
-                    Unknown
+                    Error = lists:flatten(io_lib:format("~p", [Unknown])),
+                    throw(#'UnexpectedError'{error=Error})
             end
     end.
 
@@ -128,9 +130,10 @@ rename_kv(Table, Key, NewKey, PropList, #'UpdateOptions'{}=Opts) ->
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
-                    timeout;
+                    throw(#'TimedOutException'{});
                 Unknown ->
-                    Unknown
+                    Error = lists:flatten(io_lib:format("~p", [Unknown])),
+                    throw(#'UnexpectedError'{error=Error})
             end
     end.
 
@@ -147,13 +150,14 @@ set_kv(Table, Key, Value, PropList, #'UpdateOptions'{}=Opts) ->
                 {ok, TS} ->
                     TS;
                 {ts_error, TS} ->
-                    {ts_error, TS};
+                    throw(#'TSErrorException'{key=Key, timestamp=TS});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
-                    timeout;
+                    throw(#'TimedOutException'{});
                 Unknown ->
-                    Unknown
+                    Error = lists:flatten(io_lib:format("~p", [Unknown])),
+                    throw(#'UnexpectedError'{error=Error})
             end
     end.
 
@@ -168,61 +172,70 @@ delete_kv(Table, Key, #'DeleteOptions'{}=Opts) ->
                 ok ->
                     {ok, ok};
                 key_not_exist ->
-                    key_not_exist;
+                    throw(#'KeyNotExistsException'{key=Key});
                 {ts_error, TS} ->
-                    {ts_error, TS};
+                    throw(#'TSErrorException'{key=Key, timestamp=TS});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
-                    timeout;
+                    throw(#'TimedOutException'{});
                 Unknown ->
-                    Unknown
+                    Error = lists:flatten(io_lib:format("~p", [Unknown])),
+                    throw(#'UnexpectedError'{error=Error})
             end
     end.
 
--spec get_kv(binary(), binary(), 'ReadOptions'()) -> term().
-get_kv(Table, Key, #'ReadOptions'{}=Opts) ->
+-spec get_kv(binary(), binary(), 'GetOptions'()) -> term().
+get_kv(Table, Key, #'GetOptions'{}=Opts) ->
     case table(Table) of
         undefined ->
             error;
         TableAtom ->
-            ReadOptions = parse_read_options(Opts),
+            ReadOptions = parse_get_options(Opts),
             case catch brick_simple:get(TableAtom, Key, ReadOptions, ?TIMEOUT) of
-                ok ->
-                    {ok, ok};
+                {ok, TS, Val} ->
+                    #'GetResponse'{timestamp=TS, value=Val};
+                {ok, TS} ->
+                    #'GetResponse'{timestamp=TS};
+                {ok, TS, ExpTime, Properties} ->
+                    #'GetResponse'{timestamp=TS, exp_time=ExpTime,
+                                   proplist=to_prop_list(Properties)};
+                {ok, TS, Val, ExpTime, Properties} ->
+                    #'GetResponse'{timestamp=TS, value=Val, exp_time=ExpTime,
+                                   proplist=to_prop_list(Properties)};
                 key_not_exist ->
-                    key_not_exist;
+                    throw(#'KeyNotExistsException'{key=Key});
                 {ts_error, TS} ->
-                    {ts_error, TS};
+                    throw(#'TSErrorException'{key=Key, timestamp=TS});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
-                    timeout;
+                    throw(#'TimedOutException'{});
                 Unknown ->
-                    Unknown
+                    Error = lists:flatten(io_lib:format("~p", [Unknown])),
+                    throw(#'UnexpectedError'{error=Error})
             end
     end.
 
--spec get_many(binary(), binary(), non_neg_integer(), 'ReadOptions'()) -> term().
-get_many(Table, Key, MaxKeys, #'ReadOptions'{}=Opts) ->
+-spec get_many(binary(), binary(), non_neg_integer(), 'GetManyOptions'()) -> term().
+get_many(Table, Key, MaxKeys, #'GetManyOptions'{}=Opts) ->
     case table(Table) of
         undefined ->
             error;
         TableAtom ->
-            ReadOptions = parse_read_options(Opts),
+            ReadOptions = parse_get_many_options(Opts),
             case catch brick_simple:get_many(TableAtom, Key, MaxKeys, ReadOptions, ?TIMEOUT) of
                 ok ->
                     {ok, ok};
-                key_not_exist ->
-                    key_not_exist;
-                {ts_error, TS} ->
-                    {ts_error, TS};
+                invalid_flag_present ->
+                    throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
-                    timeout;
+                    throw(#'TimedOutException'{});
                 Unknown ->
-                    Unknown
+                    Error = lists:flatten(io_lib:format("~p", [Unknown])),
+                    throw(#'UnexpectedError'{error=Error})
             end
     end.
 
@@ -231,27 +244,28 @@ get_many(Table, Key, MaxKeys, #'ReadOptions'{}=Opts) ->
 %%--------------------------------------------------------------------
 
 -spec do_ops(binary(), ['Op'()], 'DoOptions'()) -> ok.
-do_ops(Table, DoOpList, #'DoOptions'{}=_DoOptions) ->
+do_ops(Table, DoOpList, #'DoOptions'{}=Opts) ->
     case table(Table) of
         undefined ->
             error;
         TableAtom ->
             DoOpList1 = lists:map(fun do_op/1, DoOpList),
-            %% parse DoOptions
-            case catch brick_simple:do(TableAtom, DoOpList1, [], ?TIMEOUT) of
+            DoOptions = parse_do_options(Opts),
+            case catch brick_simple:do(TableAtom, DoOpList1, DoOptions, ?TIMEOUT) of
                 DoRes when is_list(DoRes) ->
                     io:format("DoRes: ~p~n", [DoRes]),
                     %% DoRes;
                     undefined;
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
-                {txn_fail, [{_Index, {key_exists, _TS}}]} ->
-                    undefined;
+                {txn_fail, [{Index, {key_exists, _TS}}]} ->
+                    throw(#'TransactionFailureException'{do_op_index=Index,
+                                                         failure= <<"KeyExists">>});
                 {'EXIT', {timeout, _}} ->
-                    timeout;
+                    throw(#'TimedOutException'{});
                 Unknown ->
-                    io:format("Unknown: ~p~n", [Unknown]),
-                    Unknown
+                    Error = lists:flatten(io_lib:format("~p", [Unknown])),
+                    throw(#'UnexpectedError'{error=Error})
             end
     end.
 
@@ -292,24 +306,26 @@ do_op(#'Op'{delete_kv=#'DoDelete'{key=Key, options=Opts},
 do_op(#'Op'{get_kv=#'DoGet'{key=Key, options=Opts},
           txn=undefined, add_kv=undefined, replace_kv=undefined, set_kv=undefined,
           rename_kv=undefined, get_many=undefined, delete_kv=undefined}) ->
-    ReadOptions = parse_read_options(Opts),
-    brick_server:make_get(Key, ReadOptions);
+    GetOptions = parse_get_options(Opts),
+    brick_server:make_get(Key, GetOptions);
 do_op(#'Op'{get_many=#'DoGetMany'{key=Key, max_keys=MaxKeys, options=Opts},
           txn=undefined, add_kv=undefined, replace_kv=undefined, set_kv=undefined,
           rename_kv=undefined, get_kv=undefined, delete_kv=undefined}) ->
-    ReadOptions = parse_read_options(Opts),
-    brick_server:make_get_many(Key, MaxKeys, ReadOptions).
+    GetManyOptions = parse_get_many_options(Opts),
+    brick_server:make_get_many(Key, MaxKeys, GetManyOptions).
 
 %%--------------------------------------------------------------------
 %% Internal functions - Common utilities
 %%--------------------------------------------------------------------
 
 %% @TODO
--type add_option() :: term().
--type update_option() :: term().
--type delete_option() :: term().
--type read_option() :: term().
--type exp_time() :: integer().
+-type add_option()      :: term().
+-type delete_option()   :: term().
+-type do_option()       :: term().
+-type get_many_option() :: term().
+-type get_option()      :: term().
+-type update_option()   :: term().
+-type exp_time()        :: integer().
 
 -spec table(binary()) -> atom() | 'undefined'.
 table(Table) ->
@@ -339,18 +355,6 @@ parse_update_options(#'UpdateOptions'{exp_time=ExpTime,
         ++ [ value_in_ram || ValueInRam ],
     {exp_time(ExpTime), Opts}.
 
--spec parse_read_options('ReadOptions'()) -> [read_option()].
-parse_read_options(#'ReadOptions'{test_set=TestSet,
-                                  is_witness=IsWitness,
-                                  get_all_attribs=GetAllAttribs,
-                                  must_exist=MustExist,
-                                  must_not_exist=MustNotExist}) ->
-    [ {test_set, TestSet} || TestSet =/= undefined ]
-        ++ [ is_witness || IsWitness ]
-        ++ [ get_all_attribs || GetAllAttribs ]
-        ++ [ must_exist || MustExist ]
-        ++ [ must_not_exist || MustNotExist ].
-
 -spec parse_delete_options('DeleteOptions'()) -> [delete_option()].
 parse_delete_options(#'DeleteOptions'{test_set=TestSet,
                                       must_exist=MustExist,
@@ -358,6 +362,34 @@ parse_delete_options(#'DeleteOptions'{test_set=TestSet,
     [ {test_set, TestSet} || TestSet =/= undefined ]
         ++ [ must_exist || MustExist ]
         ++ [ must_not_exist || MustNotExist ].
+
+-spec parse_get_options('GetOptions'()) -> [get_option()].
+parse_get_options(#'GetOptions'{test_set=TestSet,
+                                is_witness=IsWitness,
+                                get_all_attribs=GetAllAttribs,
+                                must_exist=MustExist,
+                                must_not_exist=MustNotExist}) ->
+    [ {test_set, TestSet} || TestSet =/= undefined ]
+        ++ [ is_witness || IsWitness ]
+        ++ [ get_all_attribs || GetAllAttribs ]
+        ++ [ must_exist || MustExist ]
+        ++ [ must_not_exist || MustNotExist ].
+
+-spec parse_get_many_options('GetManyOptions'()) -> [get_many_option()].
+parse_get_many_options(#'GetManyOptions'{is_witness=IsWitness,
+                                         get_all_attribs=GetAllAttribs,
+                                         max_bytes=MaxBytes,
+                                         max_num=MaxNum}) ->
+    [ is_witness || IsWitness ]
+        ++ [ get_all_attribs || GetAllAttribs ]
+        ++ [ {max_bytes, MaxBytes} || MaxBytes =/= undefined ]
+        ++ [ {max_num, MaxNum} || MaxNum =/= undefined ].
+
+-spec parse_do_options('DoOptions'()) -> [do_option()].
+parse_do_options(#'DoOptions'{fail_if_wrong_role=FailIfWrongRole,
+                              ignore_role=IgnoreRole}) ->
+    [ fail_if_wrong_role || FailIfWrongRole ]
+        ++ [ ignore_role || IgnoreRole ].
 
 -spec exp_time('undefined' | non_neg_integer()) -> non_neg_integer().
 exp_time(undefined) ->
@@ -377,8 +409,20 @@ properties(undefined) ->
 properties(PropList) ->
     [ {to_binary(K), to_binary(V)} || #'Property'{key=K, value=V} <- PropList ].
 
--spec to_binary(string() | binary()) -> binary().
+-spec to_prop_list([atom() | {atom() | binary(), atom() | binary() | integer()}]) -> ['Property'()].
+to_prop_list(Attribs) ->
+    lists:map(fun(Atom) when is_atom(Atom) ->
+                      #'Property'{key=to_binary(Atom)};
+                 ({K, V}) ->
+                      #'Property'{key=to_binary(K), value=to_binary(V)}
+              end, Attribs).
+
+-spec to_binary(string() | binary() | integer() | atom()) -> binary().
 to_binary(Bin) when is_binary(Bin) ->
     Bin;
 to_binary(Str) when is_list(Str) ->
-    list_to_binary(Str).
+    list_to_binary(Str);
+to_binary(Int) when is_integer(Int) ->
+    list_to_binary(integer_to_list(Int));
+to_binary(Atom) when is_atom(Atom) ->
+    list_to_binary(atom_to_list(Atom)).
