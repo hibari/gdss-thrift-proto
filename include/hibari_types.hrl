@@ -4,6 +4,15 @@
 -define(HIBARI_KEEPORREPLACE_KEEP, 1).
 -define(HIBARI_KEEPORREPLACE_REPLACE, 2).
 
+-define(HIBARI_DORESULTCODE_DELETIONOK, 10).
+-define(HIBARI_DORESULTCODE_MUTATIONOK, 11).
+-define(HIBARI_DORESULTCODE_GETOK, 12).
+-define(HIBARI_DORESULTCODE_GETMANYOK, 13).
+-define(HIBARI_DORESULTCODE_TSERROR, 21).
+-define(HIBARI_DORESULTCODE_KEYEXISTSEXCEPTION, 22).
+-define(HIBARI_DORESULTCODE_KEYNOTEXISTSEXCEPTION, 23).
+-define(HIBARI_DORESULTCODE_INVALIDOPTIONPRESENTEXCEPTION, 24).
+
 %% struct 'Property'
 
 -record('Property', {'key' :: string() | binary(),
@@ -50,6 +59,12 @@
                            'max_num' :: integer()}).
 -type 'GetManyOptions'() :: #'GetManyOptions'{}.
 
+%% struct 'DoOptions'
+
+-record('DoOptions', {'fail_if_wrong_role' :: boolean(),
+                      'ignore_role' :: boolean()}).
+-type 'DoOptions'() :: #'DoOptions'{}.
+
 %% struct 'DoTransaction'
 
 -record('DoTransaction', {}).
@@ -60,7 +75,7 @@
 -record('DoAdd', {'key' :: string() | binary(),
                   'value' :: string() | binary(),
                   'properties' :: list(),
-                  'options' = #'AddOptions'{} :: 'AddOptions'()}).
+                  'options' :: 'AddOptions'()}).
 -type 'DoAdd'() :: #'DoAdd'{}.
 
 %% struct 'DoReplace'
@@ -68,7 +83,7 @@
 -record('DoReplace', {'key' :: string() | binary(),
                       'value' :: string() | binary(),
                       'properties' :: list(),
-                      'options' = #'UpdateOptions'{} :: 'UpdateOptions'()}).
+                      'options' :: 'UpdateOptions'()}).
 -type 'DoReplace'() :: #'DoReplace'{}.
 
 %% struct 'DoRename'
@@ -118,12 +133,6 @@
                'get_many' :: 'DoGetMany'()}).
 -type 'Op'() :: #'Op'{}.
 
-%% struct 'DoOptions'
-
--record('DoOptions', {'fail_if_wrong_role' :: boolean(),
-                      'ignore_role' :: boolean()}).
--type 'DoOptions'() :: #'DoOptions'{}.
-
 %% struct 'GetResponse'
 
 -record('GetResponse', {'timestamp' :: integer(),
@@ -132,18 +141,44 @@
                         'proplist' :: list()}).
 -type 'GetResponse'() :: #'GetResponse'{}.
 
+%% struct 'KeyValue'
+
+-record('KeyValue', {'key' :: string() | binary(),
+                     'timestamp' :: integer(),
+                     'value' :: string() | binary(),
+                     'exp_time' :: integer(),
+                     'proplist' :: list()}).
+-type 'KeyValue'() :: #'KeyValue'{}.
+
 %% struct 'GetManyResponse'
 
--record('GetManyResponse', {'records' = [] :: list(),
+-record('GetManyResponse', {'key_values' = [] :: list(),
                             'is_truncated' :: boolean()}).
 -type 'GetManyResponse'() :: #'GetManyResponse'{}.
 
+%% struct 'MutationResult'
+
+-record('MutationResult', {'timestamp' :: integer()}).
+-type 'MutationResult'() :: #'MutationResult'{}.
+
+%% struct 'TSErrorResult'
+
+-record('TSErrorResult', {'timestamp' :: integer()}).
+-type 'TSErrorResult'() :: #'TSErrorResult'{}.
+
+%% struct 'KeyExistsResult'
+
+-record('KeyExistsResult', {'timestamp' :: integer()}).
+-type 'KeyExistsResult'() :: #'KeyExistsResult'{}.
+
 %% struct 'DoResult'
 
--record('DoResult', {'is_success' :: boolean(),
-                     'timestamp' :: integer(),
-                     'get_res' :: 'GetResponse'(),
-                     'get_many_res' :: 'GetManyResponse'()}).
+-record('DoResult', {'result_code' :: integer(),
+                     'mutate_kv' :: 'MutationResult'(),
+                     'get_kv' :: 'GetResponse'(),
+                     'get_many' :: 'GetManyResponse'(),
+                     'ts_error' :: 'TSErrorResult'(),
+                     'key_exists' :: 'KeyExistsResult'()}).
 -type 'DoResult'() :: #'DoResult'{}.
 
 %% struct 'DoResponse'
@@ -161,31 +196,29 @@
 -record('ServiceNotAvailableException', {}).
 -type 'ServiceNotAvailableException'() :: #'ServiceNotAvailableException'{}.
 
-%% struct 'NotImplementedException'
-
--record('NotImplementedException', {}).
--type 'NotImplementedException'() :: #'NotImplementedException'{}.
-
 %% struct 'TimedOutException'
 
 -record('TimedOutException', {}).
 -type 'TimedOutException'() :: #'TimedOutException'{}.
 
+%% struct 'TableNotFoundException'
+
+-record('TableNotFoundException', {}).
+-type 'TableNotFoundException'() :: #'TableNotFoundException'{}.
+
 %% struct 'TSErrorException'
 
--record('TSErrorException', {'key' :: string() | binary(),
-                             'timestamp' :: integer()}).
+-record('TSErrorException', {'timestamp' :: integer()}).
 -type 'TSErrorException'() :: #'TSErrorException'{}.
 
 %% struct 'KeyExistsException'
 
--record('KeyExistsException', {'key' :: string() | binary(),
-                               'timestamp' :: integer()}).
+-record('KeyExistsException', {'timestamp' :: integer()}).
 -type 'KeyExistsException'() :: #'KeyExistsException'{}.
 
 %% struct 'KeyNotExistsException'
 
--record('KeyNotExistsException', {'key' :: string() | binary()}).
+-record('KeyNotExistsException', {}).
 -type 'KeyNotExistsException'() :: #'KeyNotExistsException'{}.
 
 %% struct 'InvalidOptionPresentException'
@@ -196,7 +229,7 @@
 %% struct 'TransactionFailureException'
 
 -record('TransactionFailureException', {'do_op_index' :: integer(),
-                                        'failure' = #'TxnFailure'{} :: 'TxnFailure'()}).
+                                        'do_result' = #'DoResult'{} :: 'DoResult'()}).
 -type 'TransactionFailureException'() :: #'TransactionFailureException'{}.
 
 %% struct 'UnexpectedError'

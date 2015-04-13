@@ -47,16 +47,19 @@ t1(Port) ->
     {ok, C0} = thrift_client_util:new("localhost", Port, hibari_thrift, []),
     PropList = [],
     WriteOptions0 = #'AddOptions'{exp_time=1234567890, value_in_ram=true},
-    {C1, R1} = thrift_client:call(C0, add_kv, ["tab1", <<"key1">>, <<"val1">>,
+    {C1, R1} = thrift_client:call(C0, add_kv, ["tab1", <<"key/1">>, <<"val1">>,
                                                PropList, WriteOptions0]),
     io:format("R1: ~p~n", [R1]),
 
     Txn  = #'Op'{txn=#'DoTransaction'{}},
-    Add1 = #'Op'{replace_kv=#'DoReplace'{key= <<"key1">>, value= <<"val1">>,
+    Add1 = #'Op'{replace_kv=#'DoReplace'{key= <<"key/1">>, value= <<"val1">>,
                                          properties=[#'Property'{key= <<"color">>, value= <<"blue">>}],
                                          options=#'UpdateOptions'{exp_time_directive=?KEEP}
                                     }},
-    Add2 = #'Op'{add_kv=#'DoAdd'{key= <<"key2">>, value= <<"val2">>}},
-    {_C2, R2} = thrift_client:call(C1, do_ops, ["tab1", [Txn, Add1, Add2], #'DoOptions'{}]),
+    Add2 = #'Op'{add_kv=#'DoAdd'{key= <<"key/2">>, value= <<"val2">>}},
+    {C2, R2} = thrift_client:call(C1, do_ops, ["tab1", [Txn, Add1, Add2], #'DoOptions'{}]),
     io:format("R2: ~p~n", [R2]),
+
+    {_C3, R3} = thrift_client:call(C2, get_many, ["tab1", <<"key/1">>, 100, #'GetManyOptions'{}]),
+    io:format("R3: ~p~n", [R3]),
     ok.

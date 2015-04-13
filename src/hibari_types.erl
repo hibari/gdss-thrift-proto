@@ -50,6 +50,11 @@ struct_info('GetManyOptions') ->
           {5, i32}]}
 ;
 
+struct_info('DoOptions') ->
+  {struct, [{1, bool},
+          {2, bool}]}
+;
+
 struct_info('DoTransaction') ->
   {struct, []}
 ;
@@ -104,14 +109,9 @@ struct_info('Op') ->
           {3, {struct, {'hibari_types', 'DoReplace'}}},
           {4, {struct, {'hibari_types', 'DoSet'}}},
           {6, {struct, {'hibari_types', 'DoRename'}}},
-          {51, {struct, {'hibari_types', 'DoDelete'}}},
-          {101, {struct, {'hibari_types', 'DoGet'}}},
-          {102, {struct, {'hibari_types', 'DoGetMany'}}}]}
-;
-
-struct_info('DoOptions') ->
-  {struct, [{1, bool},
-          {2, bool}]}
+          {7, {struct, {'hibari_types', 'DoDelete'}}},
+          {8, {struct, {'hibari_types', 'DoGet'}}},
+          {9, {struct, {'hibari_types', 'DoGetMany'}}}]}
 ;
 
 struct_info('GetResponse') ->
@@ -121,16 +121,38 @@ struct_info('GetResponse') ->
           {4, {list, {struct, {'hibari_types', 'Property'}}}}]}
 ;
 
+struct_info('KeyValue') ->
+  {struct, [{1, string},
+          {2, i64},
+          {3, string},
+          {4, i64},
+          {5, {list, {struct, {'hibari_types', 'Property'}}}}]}
+;
+
 struct_info('GetManyResponse') ->
-  {struct, [{1, {list, {struct, {'hibari_types', 'GetResponse'}}}},
+  {struct, [{1, {list, {struct, {'hibari_types', 'KeyValue'}}}},
           {2, bool}]}
 ;
 
+struct_info('MutationResult') ->
+  {struct, [{1, i64}]}
+;
+
+struct_info('TSErrorResult') ->
+  {struct, [{1, i64}]}
+;
+
+struct_info('KeyExistsResult') ->
+  {struct, [{1, i64}]}
+;
+
 struct_info('DoResult') ->
-  {struct, [{1, bool},
-          {2, i64},
+  {struct, [{1, i32},
+          {2, {struct, {'hibari_types', 'MutationResult'}}},
           {3, {struct, {'hibari_types', 'GetResponse'}}},
-          {4, {struct, {'hibari_types', 'GetManyResponse'}}}]}
+          {4, {struct, {'hibari_types', 'GetManyResponse'}}},
+          {11, {struct, {'hibari_types', 'TSErrorResult'}}},
+          {12, {struct, {'hibari_types', 'KeyExistsResult'}}}]}
 ;
 
 struct_info('DoResponse') ->
@@ -145,26 +167,24 @@ struct_info('ServiceNotAvailableException') ->
   {struct, []}
 ;
 
-struct_info('NotImplementedException') ->
-  {struct, []}
-;
-
 struct_info('TimedOutException') ->
   {struct, []}
 ;
 
+struct_info('TableNotFoundException') ->
+  {struct, []}
+;
+
 struct_info('TSErrorException') ->
-  {struct, [{1, string},
-          {2, i64}]}
+  {struct, [{1, i64}]}
 ;
 
 struct_info('KeyExistsException') ->
-  {struct, [{1, string},
-          {2, i64}]}
+  {struct, [{1, i64}]}
 ;
 
 struct_info('KeyNotExistsException') ->
-  {struct, [{1, string}]}
+  {struct, []}
 ;
 
 struct_info('InvalidOptionPresentException') ->
@@ -173,7 +193,7 @@ struct_info('InvalidOptionPresentException') ->
 
 struct_info('TransactionFailureException') ->
   {struct, [{1, i32},
-          {2, {struct, {'hibari_types', 'TxnFailure'}}}]}
+          {2, {struct, {'hibari_types', 'DoResult'}}}]}
 ;
 
 struct_info('UnexpectedError') ->
@@ -222,6 +242,11 @@ struct_info_ext('GetManyOptions') ->
           {5, optional, i32, 'max_num', undefined}]}
 ;
 
+struct_info_ext('DoOptions') ->
+  {struct, [{1, optional, bool, 'fail_if_wrong_role', undefined},
+          {2, optional, bool, 'ignore_role', undefined}]}
+;
+
 struct_info_ext('DoTransaction') ->
   {struct, []}
 ;
@@ -230,14 +255,14 @@ struct_info_ext('DoAdd') ->
   {struct, [{1, required, string, 'key', undefined},
           {2, required, string, 'value', undefined},
           {3, optional, {list, {struct, {'hibari_types', 'Property'}}}, 'properties', []},
-          {4, required, {struct, {'hibari_types', 'AddOptions'}}, 'options', #'AddOptions'{}}]}
+          {4, optional, {struct, {'hibari_types', 'AddOptions'}}, 'options', #'AddOptions'{}}]}
 ;
 
 struct_info_ext('DoReplace') ->
   {struct, [{1, required, string, 'key', undefined},
           {2, required, string, 'value', undefined},
           {3, optional, {list, {struct, {'hibari_types', 'Property'}}}, 'properties', []},
-          {4, required, {struct, {'hibari_types', 'UpdateOptions'}}, 'options', #'UpdateOptions'{}}]}
+          {4, optional, {struct, {'hibari_types', 'UpdateOptions'}}, 'options', #'UpdateOptions'{}}]}
 ;
 
 struct_info_ext('DoRename') ->
@@ -276,14 +301,9 @@ struct_info_ext('Op') ->
           {3, optional, {struct, {'hibari_types', 'DoReplace'}}, 'replace_kv', #'DoReplace'{}},
           {4, optional, {struct, {'hibari_types', 'DoSet'}}, 'set_kv', #'DoSet'{}},
           {6, optional, {struct, {'hibari_types', 'DoRename'}}, 'rename_kv', #'DoRename'{}},
-          {51, optional, {struct, {'hibari_types', 'DoDelete'}}, 'delete_kv', #'DoDelete'{}},
-          {101, optional, {struct, {'hibari_types', 'DoGet'}}, 'get_kv', #'DoGet'{}},
-          {102, optional, {struct, {'hibari_types', 'DoGetMany'}}, 'get_many', #'DoGetMany'{}}]}
-;
-
-struct_info_ext('DoOptions') ->
-  {struct, [{1, optional, bool, 'fail_if_wrong_role', undefined},
-          {2, optional, bool, 'ignore_role', undefined}]}
+          {7, optional, {struct, {'hibari_types', 'DoDelete'}}, 'delete_kv', #'DoDelete'{}},
+          {8, optional, {struct, {'hibari_types', 'DoGet'}}, 'get_kv', #'DoGet'{}},
+          {9, optional, {struct, {'hibari_types', 'DoGetMany'}}, 'get_many', #'DoGetMany'{}}]}
 ;
 
 struct_info_ext('GetResponse') ->
@@ -293,16 +313,38 @@ struct_info_ext('GetResponse') ->
           {4, optional, {list, {struct, {'hibari_types', 'Property'}}}, 'proplist', []}]}
 ;
 
+struct_info_ext('KeyValue') ->
+  {struct, [{1, required, string, 'key', undefined},
+          {2, required, i64, 'timestamp', undefined},
+          {3, optional, string, 'value', undefined},
+          {4, optional, i64, 'exp_time', undefined},
+          {5, optional, {list, {struct, {'hibari_types', 'Property'}}}, 'proplist', []}]}
+;
+
 struct_info_ext('GetManyResponse') ->
-  {struct, [{1, required, {list, {struct, {'hibari_types', 'GetResponse'}}}, 'records', []},
+  {struct, [{1, required, {list, {struct, {'hibari_types', 'KeyValue'}}}, 'key_values', []},
           {2, required, bool, 'is_truncated', undefined}]}
 ;
 
+struct_info_ext('MutationResult') ->
+  {struct, [{1, required, i64, 'timestamp', undefined}]}
+;
+
+struct_info_ext('TSErrorResult') ->
+  {struct, [{1, required, i64, 'timestamp', undefined}]}
+;
+
+struct_info_ext('KeyExistsResult') ->
+  {struct, [{1, required, i64, 'timestamp', undefined}]}
+;
+
 struct_info_ext('DoResult') ->
-  {struct, [{1, required, bool, 'is_success', undefined},
-          {2, optional, i64, 'timestamp', undefined},
-          {3, optional, {struct, {'hibari_types', 'GetResponse'}}, 'get_res', #'GetResponse'{}},
-          {4, optional, {struct, {'hibari_types', 'GetManyResponse'}}, 'get_many_res', #'GetManyResponse'{}}]}
+  {struct, [{1, required, i32, 'result_code', undefined},
+          {2, optional, {struct, {'hibari_types', 'MutationResult'}}, 'mutate_kv', #'MutationResult'{}},
+          {3, optional, {struct, {'hibari_types', 'GetResponse'}}, 'get_kv', #'GetResponse'{}},
+          {4, optional, {struct, {'hibari_types', 'GetManyResponse'}}, 'get_many', #'GetManyResponse'{}},
+          {11, optional, {struct, {'hibari_types', 'TSErrorResult'}}, 'ts_error', #'TSErrorResult'{}},
+          {12, optional, {struct, {'hibari_types', 'KeyExistsResult'}}, 'key_exists', #'KeyExistsResult'{}}]}
 ;
 
 struct_info_ext('DoResponse') ->
@@ -317,26 +359,24 @@ struct_info_ext('ServiceNotAvailableException') ->
   {struct, []}
 ;
 
-struct_info_ext('NotImplementedException') ->
-  {struct, []}
-;
-
 struct_info_ext('TimedOutException') ->
   {struct, []}
 ;
 
+struct_info_ext('TableNotFoundException') ->
+  {struct, []}
+;
+
 struct_info_ext('TSErrorException') ->
-  {struct, [{1, required, string, 'key', undefined},
-          {2, required, i64, 'timestamp', undefined}]}
+  {struct, [{1, required, i64, 'timestamp', undefined}]}
 ;
 
 struct_info_ext('KeyExistsException') ->
-  {struct, [{1, required, string, 'key', undefined},
-          {2, required, i64, 'timestamp', undefined}]}
+  {struct, [{1, required, i64, 'timestamp', undefined}]}
 ;
 
 struct_info_ext('KeyNotExistsException') ->
-  {struct, [{1, required, string, 'key', undefined}]}
+  {struct, []}
 ;
 
 struct_info_ext('InvalidOptionPresentException') ->
@@ -345,7 +385,7 @@ struct_info_ext('InvalidOptionPresentException') ->
 
 struct_info_ext('TransactionFailureException') ->
   {struct, [{1, required, i32, 'do_op_index', undefined},
-          {2, required, {struct, {'hibari_types', 'TxnFailure'}}, 'failure', #'TxnFailure'{}}]}
+          {2, required, {struct, {'hibari_types', 'DoResult'}}, 'do_result', #'DoResult'{}}]}
 ;
 
 struct_info_ext('UnexpectedError') ->

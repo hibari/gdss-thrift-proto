@@ -27,8 +27,10 @@ function_info('add_kv', reply_type) ->
 function_info('add_kv', exceptions) ->
   {struct, [{1, {struct, {'hibari_types', 'ServiceNotAvailableException'}}},
           {2, {struct, {'hibari_types', 'TimedOutException'}}},
-          {3, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
-          {4, {struct, {'hibari_types', 'KeyExistsException'}}}]}
+          {3, {struct, {'hibari_types', 'TableNotFoundException'}}},
+          {4, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
+          {5, {struct, {'hibari_types', 'KeyExistsException'}}},
+          {6, {struct, {'hibari_types', 'UnexpectedError'}}}]}
 ;
 % replace_kv(This, Table, Key, Value, Properties, Options)
 function_info('replace_kv', params_type) ->
@@ -43,9 +45,11 @@ function_info('replace_kv', reply_type) ->
 function_info('replace_kv', exceptions) ->
   {struct, [{1, {struct, {'hibari_types', 'ServiceNotAvailableException'}}},
           {2, {struct, {'hibari_types', 'TimedOutException'}}},
-          {3, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
-          {4, {struct, {'hibari_types', 'KeyNotExistsException'}}},
-          {5, {struct, {'hibari_types', 'TSErrorException'}}}]}
+          {3, {struct, {'hibari_types', 'TableNotFoundException'}}},
+          {4, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
+          {5, {struct, {'hibari_types', 'KeyNotExistsException'}}},
+          {6, {struct, {'hibari_types', 'TSErrorException'}}},
+          {7, {struct, {'hibari_types', 'UnexpectedError'}}}]}
 ;
 % rename_kv(This, Table, Key, New_key, Properties, Options)
 function_info('rename_kv', params_type) ->
@@ -60,9 +64,11 @@ function_info('rename_kv', reply_type) ->
 function_info('rename_kv', exceptions) ->
   {struct, [{1, {struct, {'hibari_types', 'ServiceNotAvailableException'}}},
           {2, {struct, {'hibari_types', 'TimedOutException'}}},
-          {3, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
-          {4, {struct, {'hibari_types', 'KeyNotExistsException'}}},
-          {5, {struct, {'hibari_types', 'TSErrorException'}}}]}
+          {3, {struct, {'hibari_types', 'TableNotFoundException'}}},
+          {4, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
+          {5, {struct, {'hibari_types', 'KeyNotExistsException'}}},
+          {6, {struct, {'hibari_types', 'TSErrorException'}}},
+          {7, {struct, {'hibari_types', 'UnexpectedError'}}}]}
 ;
 % set_kv(This, Table, Key, Value, Properties, Options)
 function_info('set_kv', params_type) ->
@@ -77,8 +83,9 @@ function_info('set_kv', reply_type) ->
 function_info('set_kv', exceptions) ->
   {struct, [{1, {struct, {'hibari_types', 'ServiceNotAvailableException'}}},
           {2, {struct, {'hibari_types', 'TimedOutException'}}},
-          {3, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
-          {4, {struct, {'hibari_types', 'TSErrorException'}}}]}
+          {3, {struct, {'hibari_types', 'TableNotFoundException'}}},
+          {4, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
+          {5, {struct, {'hibari_types', 'TSErrorException'}}}]}
 ;
 % delete_kv(This, Table, Key, Options)
 function_info('delete_kv', params_type) ->
@@ -91,9 +98,11 @@ function_info('delete_kv', reply_type) ->
 function_info('delete_kv', exceptions) ->
   {struct, [{1, {struct, {'hibari_types', 'ServiceNotAvailableException'}}},
           {2, {struct, {'hibari_types', 'TimedOutException'}}},
-          {3, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
-          {4, {struct, {'hibari_types', 'KeyNotExistsException'}}},
-          {5, {struct, {'hibari_types', 'TSErrorException'}}}]}
+          {3, {struct, {'hibari_types', 'TableNotFoundException'}}},
+          {4, {struct, {'hibari_types', 'InvalidOptionPresentException'}}},
+          {5, {struct, {'hibari_types', 'KeyNotExistsException'}}},
+          {6, {struct, {'hibari_types', 'TSErrorException'}}},
+          {7, {struct, {'hibari_types', 'UnexpectedError'}}}]}
 ;
 % get_kv(This, Table, Key, Options)
 function_info('get_kv', params_type) ->
@@ -106,8 +115,10 @@ function_info('get_kv', reply_type) ->
 function_info('get_kv', exceptions) ->
   {struct, [{1, {struct, {'hibari_types', 'ServiceNotAvailableException'}}},
           {2, {struct, {'hibari_types', 'TimedOutException'}}},
-          {3, {struct, {'hibari_types', 'KeyNotExistsException'}}},
-          {4, {struct, {'hibari_types', 'TSErrorException'}}}]}
+          {3, {struct, {'hibari_types', 'TableNotFoundException'}}},
+          {4, {struct, {'hibari_types', 'KeyNotExistsException'}}},
+          {5, {struct, {'hibari_types', 'TSErrorException'}}},
+          {6, {struct, {'hibari_types', 'UnexpectedError'}}}]}
 ;
 % get_many(This, Table, Key, Max_keys, Options)
 function_info('get_many', params_type) ->
@@ -121,7 +132,9 @@ function_info('get_many', reply_type) ->
 function_info('get_many', exceptions) ->
   {struct, [{1, {struct, {'hibari_types', 'ServiceNotAvailableException'}}},
           {2, {struct, {'hibari_types', 'TimedOutException'}}},
-          {3, {struct, {'hibari_types', 'TSErrorException'}}}]}
+          {3, {struct, {'hibari_types', 'TableNotFoundException'}}},
+          {4, {struct, {'hibari_types', 'TSErrorException'}}},
+          {5, {struct, {'hibari_types', 'UnexpectedError'}}}]}
 ;
 % do_ops(This, Table, Do_operations, Options)
 function_info('do_ops', params_type) ->
@@ -134,7 +147,9 @@ function_info('do_ops', reply_type) ->
 function_info('do_ops', exceptions) ->
   {struct, [{1, {struct, {'hibari_types', 'ServiceNotAvailableException'}}},
           {2, {struct, {'hibari_types', 'TimedOutException'}}},
-          {3, {struct, {'hibari_types', 'TransactionFailureException'}}}]}
+          {3, {struct, {'hibari_types', 'TableNotFoundException'}}},
+          {4, {struct, {'hibari_types', 'TransactionFailureException'}}},
+          {5, {struct, {'hibari_types', 'UnexpectedError'}}}]}
 ;
 function_info(_Func, _Info) -> erlang:error(function_clause).
 

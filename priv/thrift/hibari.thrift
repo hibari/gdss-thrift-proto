@@ -15,10 +15,25 @@
 # limitations under the License.
 #----------------------------------------------------------------------
 
-namespace java org.hibaridb.thrift
+namespace java org.hibaridb.hibari.thrift
+namespace cpp org.hibaridb.hibari
+namespace csharp HibariDB.Hibari
+namespace py hibari
+namespace php hibari
+namespace perl Hibari
+
+# Thrift.rb has a bug where top-level modules that include modules
+# with the same name are not properly referenced, so we can't do
+# Hibari::Hibari::Client.
+namespace rb HibariThrift
+
 
 typedef i64 ExpTime
 typedef i64 Timestamp
+
+/* ************************* *
+ * Options
+ * ************************* */
 
 struct Property {
   1: required string key,
@@ -65,20 +80,30 @@ struct GetManyOptions {
   5: optional i32           max_num,
 }
 
+struct DoOptions {
+  1: optional bool fail_if_wrong_role,
+  2: optional bool ignore_role,
+}
+
+
+/* ************************* *
+ * Do Operations
+ * ************************* */
+
 struct DoTransaction { }
 
 struct DoAdd {
   1: required binary key,
   2: required binary value,
   3: optional list<Property> properties,   // @TODO Change to map<binary, binary> ?
-  4: required AddOptions     options,
+  4: optional AddOptions     options,
 }
 
 struct DoReplace {
   1: required binary key,
   2: required binary value,
   3: optional list<Property> properties,
-  4: required UpdateOptions  options,
+  4: optional UpdateOptions  options,
 }
 
 struct DoRename {
@@ -118,15 +143,15 @@ union Op {
     4: optional DoSet         set_kv,
 //  5: optional DoCopy        copy_kv,     // Reserved for Hibari v0.3
     6: optional DoRename      rename_kv,
-   51: optional DoDelete      delete_kv,
-  101: optional DoGet         get_kv,
-  102: optional DoGetMany     get_many,
+    7: optional DoDelete      delete_kv,
+    8: optional DoGet         get_kv,
+    9: optional DoGetMany     get_many,
 }
 
-struct DoOptions {
-  1: optional bool fail_if_wrong_role,
-  2: optional bool ignore_role,
-}
+
+/* ************************* *
+ * Responses
+ * ************************* */
 
 struct GetResponse {
   1: required Timestamp      timestamp,
@@ -135,16 +160,55 @@ struct GetResponse {
   4: optional list<Property> proplist,
 }
 
+struct KeyValue {
+  1: required binary         key,
+  2: required Timestamp      timestamp,
+  3: optional binary         value,
+  4: optional ExpTime        exp_time,
+  5: optional list<Property> proplist,
+}
+
 struct GetManyResponse {
-  1: required list<GetResponse> records,
+  1: required list<KeyValue> key_values,
   2: required bool is_truncated,
 }
 
+
+/* ************************* *
+ * Do Results/Response
+ * ************************* */
+
+enum DoResultCode {
+  DeletionOK                    = 10,
+  MutationOK                    = 11,
+  GetOK                         = 12,
+  GetManyOK                     = 13,
+  TSError                       = 21,
+  KeyExistsException            = 22,
+  KeyNotExistsException         = 23,
+  InvalidOptionPresentException = 24,
+}
+
+// DoResult for add, replace, set, and rename
+struct MutationResult {
+  1: required Timestamp timestamp,
+}
+
+struct TSErrorResult {
+  1: required Timestamp timestamp,
+}
+
+struct KeyExistsResult {
+  1: required Timestamp timestamp,
+}
+
 struct DoResult {
-  1: required bool            is_success,
-  2: optional Timestamp       timestamp,   // add, replace, set, rename
-  3: optional GetResponse     get_res,
-  4: optional GetManyResponse get_many_res,
+    1: required DoResultCode      result_code,
+    2: optional MutationResult    mutate_kv, // add, replace, set, rename
+    3: optional GetResponse       get_kv,
+    4: optional GetManyResponse   get_many,
+   11: optional TSErrorResult     ts_error,
+   12: optional KeyExistsResult   key_exists,
 }
 
 struct DoResponse {
@@ -155,36 +219,42 @@ struct TxnFailure {
   // TODO
 }
 
-exception ServiceNotAvailableException {}
 
-exception NotImplementedException {}
+/* ************************* *
+ * Exceptions
+ * ************************* */
+
+exception ServiceNotAvailableException {}
 
 exception TimedOutException {}
 
+exception TableNotFoundException {}
+
 exception TSErrorException {
-  1: required binary key,
-  2: required Timestamp timestamp,
+  1: required Timestamp timestamp,
 }
 
 exception KeyExistsException {
-  1: required binary key,
-  2: required Timestamp timestamp,
+  1: required Timestamp timestamp,
 }
 
-exception KeyNotExistsException {
-  1: required binary key,
-}
+exception KeyNotExistsException {}
 
 exception InvalidOptionPresentException {}
 
 exception TransactionFailureException {
   1: required i32        do_op_index,
-  2: required TxnFailure failure,       // @TODO: Change to "reason"
+  2: required DoResult   do_result,
 }
 
 exception UnexpectedError {
   1: optional string error,
 }
+
+
+/* ************************* *
+ * Service
+ * ************************* */
 
 service Hibari {
 
@@ -198,8 +268,10 @@ service Hibari {
                    5: required AddOptions options)
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
-              3: InvalidOptionPresentException invalid_opt,
-              4: KeyExistsException key_exsits)
+              3: TableNotFoundException table_not_found,
+              4: InvalidOptionPresentException invalid_opt,
+              5: KeyExistsException key_exsits,
+              6: UnexpectedError unexpected)
 
   /**
    * replace
@@ -211,9 +283,11 @@ service Hibari {
                        5: required UpdateOptions options)
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
-              3: InvalidOptionPresentException invalid_opt,
-              4: KeyNotExistsException key_exsits,
-              5: TSErrorException ts_error)
+              3: TableNotFoundException table_not_found,
+              4: InvalidOptionPresentException invalid_opt,
+              5: KeyNotExistsException key_exsits,
+              6: TSErrorException ts_error,
+              7: UnexpectedError unexpected)
 
   /**
    * rename
@@ -225,9 +299,11 @@ service Hibari {
                       5: required UpdateOptions options)
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
-              3: InvalidOptionPresentException invalid_opt,
-              4: KeyNotExistsException key_not_exsits,
-              5: TSErrorException ts_error)
+              3: TableNotFoundException table_not_found,
+              4: InvalidOptionPresentException invalid_opt,
+              5: KeyNotExistsException key_not_exsits,
+              6: TSErrorException ts_error,
+              7: UnexpectedError unexpected)
 
   /**
    * set
@@ -239,8 +315,9 @@ service Hibari {
                    5: required UpdateOptions options)
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
-              3: InvalidOptionPresentException invalid_opt,
-              4: TSErrorException ts_error)
+              3: TableNotFoundException table_not_found,
+              4: InvalidOptionPresentException invalid_opt,
+              5: TSErrorException ts_error)
 
   /**
    * delete
@@ -250,9 +327,11 @@ service Hibari {
                  3: required DeleteOptions options)
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
-              3: InvalidOptionPresentException invalid_opt,
-              4: KeyNotExistsException key_not_exsits,
-              5: TSErrorException ts_error)
+              3: TableNotFoundException table_not_found,
+              4: InvalidOptionPresentException invalid_opt,
+              5: KeyNotExistsException key_not_exsits,
+              6: TSErrorException ts_error,
+              7: UnexpectedError unexpected)
 
   /**
    * get
@@ -262,8 +341,10 @@ service Hibari {
                      3: required GetOptions options)
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
-              3: KeyNotExistsException key_not_exsits,
-              4: TSErrorException ts_error)
+              3: TableNotFoundException table_not_found,
+              4: KeyNotExistsException key_not_exsits,
+              5: TSErrorException ts_error,
+              6: UnexpectedError unexpected)
 
   /**
    * get_many
@@ -274,7 +355,9 @@ service Hibari {
                            4: required GetManyOptions options)
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
-              3: TSErrorException ts_error)
+              3: TableNotFoundException table_not_found,
+              4: TSErrorException ts_error,
+              5: UnexpectedError unexpected)
 
   /**
    * do
@@ -284,6 +367,8 @@ service Hibari {
                     3: required DoOptions options)
       throws (1: ServiceNotAvailableException not_avail,
               2: TimedOutException timeout,
-              3: TransactionFailureException txn_fail)
+              3: TableNotFoundException table_not_found,
+              4: TransactionFailureException txn_fail,
+              5: UnexpectedError unexpected)
 
 }

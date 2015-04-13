@@ -37,8 +37,34 @@
 %% defines, types, records
 %%--------------------------------------------------------------------
 
+%% @TODO
+-type add_option()      :: term().
+-type delete_option()   :: term().
+-type do_option()       :: term().
+-type get_many_option() :: term().
+-type get_option()      :: term().
+-type update_option()   :: term().
+-type exp_time()        :: integer().
+
+-type do_op_type() :: 'txn'
+                    | 'deletion'
+                    | 'mutation'
+                    | 'get'
+                    | 'get_many'.
+
+%% Keep or Replace Option
 -define(KEEP,    ?HIBARI_KEEPORREPLACE_KEEP).
 -define(REPLACE, ?HIBARI_KEEPORREPLACE_REPLACE).
+
+%% Do Result Code
+-define(DeletionOK,                    ?HIBARI_DORESULTCODE_DELETIONOK).
+-define(MutationOK,                    ?HIBARI_DORESULTCODE_MUTATIONOK).
+-define(GetOK,                         ?HIBARI_DORESULTCODE_GETOK).
+-define(GetManyOK,                     ?HIBARI_DORESULTCODE_GETMANYOK).
+-define(TSError,                       ?HIBARI_DORESULTCODE_TSERROR).
+-define(KeyExistsException,            ?HIBARI_DORESULTCODE_KEYEXISTSEXCEPTION).
+-define(KeyNotExistsException,         ?HIBARI_DORESULTCODE_KEYNOTEXISTSEXCEPTION).
+-define(InvalidOptionPresentException, ?HIBARI_DORESULTCODE_INVALIDOPTIONPRESENTEXCEPTION).
 
 -define(TIMEOUT, 15000).
 
@@ -66,8 +92,8 @@ handle_function(Function, Args) ->
 -spec add_kv(binary(), binary(), binary(), ['Property'()], 'AddOptions'()) -> integer() | term().
 add_kv(Table, Key, Value, PropList, #'AddOptions'{}=Opts) ->
     case table(Table) of
-        undefined ->
-            error;
+        table_not_found ->
+            throw(#'TableNotFoundException'{});
         TableAtom ->
             Properties = properties(PropList),
             {ExpTime, WriteOptions} = parse_add_options(Opts),
@@ -76,7 +102,7 @@ add_kv(Table, Key, Value, PropList, #'AddOptions'{}=Opts) ->
                 {ok, TS} ->
                     TS;
                 {key_exists, TS} ->
-                    throw(#'KeyExistsException'{key=Key, timestamp=TS});
+                    throw(#'KeyExistsException'{timestamp=TS});
                 invalid_flag_present ->
                     throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
@@ -92,8 +118,8 @@ add_kv(Table, Key, Value, PropList, #'AddOptions'{}=Opts) ->
 -spec replace_kv(binary(), binary(), binary(), ['Property'()], 'UpdateOptions'()) -> integer() | term().
 replace_kv(Table, Key, Value, PropList, #'UpdateOptions'{}=Opts) ->
     case table(Table) of
-        undefined ->
-            error;
+        table_not_found ->
+            throw(#'TableNotFoundException'{});
         TableAtom ->
             Properties = properties(PropList),
             {ExpTime, WriteOptions} = parse_update_options(Opts),
@@ -102,9 +128,9 @@ replace_kv(Table, Key, Value, PropList, #'UpdateOptions'{}=Opts) ->
                 {ok, TS} ->
                     TS;
                 key_not_exists ->
-                    throw(#'KeyNotExistsException'{key=Key});
+                    throw(#'KeyNotExistsException'{});
                 {ts_error, TS} ->
-                    throw(#'TSErrorException'{key=Key, timestamp=TS});
+                    throw(#'TSErrorException'{timestamp=TS});
                 invalid_flag_present ->
                     throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
@@ -120,8 +146,8 @@ replace_kv(Table, Key, Value, PropList, #'UpdateOptions'{}=Opts) ->
 -spec rename_kv(binary(), binary(), binary(), ['Property'()], 'UpdateOptions'()) -> integer() | term().
 rename_kv(Table, Key, NewKey, PropList, #'UpdateOptions'{}=Opts) ->
     case table(Table) of
-        undefined ->
-            error;
+        table_not_found ->
+            throw(#'TableNotFoundException'{});
         TableAtom ->
             Properties = properties(PropList),
             {ExpTime, WriteOptions} = parse_update_options(Opts),
@@ -146,8 +172,8 @@ rename_kv(Table, Key, NewKey, PropList, #'UpdateOptions'{}=Opts) ->
 -spec set_kv(binary(), binary(), binary(), ['Property'()], 'UpdateOptions'()) -> integer() | term().
 set_kv(Table, Key, Value, PropList, #'UpdateOptions'{}=Opts) ->
     case table(Table) of
-        undefined ->
-            error;
+        table_not_found ->
+            throw(#'TableNotFoundException'{});
         TableAtom ->
             Properties = properties(PropList),
             {ExpTime, WriteOptions} = parse_update_options(Opts),
@@ -156,7 +182,7 @@ set_kv(Table, Key, Value, PropList, #'UpdateOptions'{}=Opts) ->
                 {ok, TS} ->
                     TS;
                 {ts_error, TS} ->
-                    throw(#'TSErrorException'{key=Key, timestamp=TS});
+                    throw(#'TSErrorException'{timestamp=TS});
                 invalid_flag_present ->
                     throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
@@ -172,17 +198,17 @@ set_kv(Table, Key, Value, PropList, #'UpdateOptions'{}=Opts) ->
 -spec delete_kv(binary(), binary(), 'DeleteOptions'()) -> term().
 delete_kv(Table, Key, #'DeleteOptions'{}=Opts) ->
     case table(Table) of
-        undefined ->
-            error;
+        table_not_found ->
+            throw(#'TableNotFoundException'{});
         TableAtom ->
             DeleteOptions = parse_delete_options(Opts),
             case catch brick_simple:delete(TableAtom, Key, DeleteOptions, ?TIMEOUT) of
                 ok ->
                     {ok, ok};
                 key_not_exist ->
-                    throw(#'KeyNotExistsException'{key=Key});
+                    throw(#'KeyNotExistsException'{});
                 {ts_error, TS} ->
-                    throw(#'TSErrorException'{key=Key, timestamp=TS});
+                    throw(#'TSErrorException'{timestamp=TS});
                 invalid_flag_present ->
                     throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
@@ -198,8 +224,8 @@ delete_kv(Table, Key, #'DeleteOptions'{}=Opts) ->
 -spec get_kv(binary(), binary(), 'GetOptions'()) -> term().
 get_kv(Table, Key, #'GetOptions'{}=Opts) ->
     case table(Table) of
-        undefined ->
-            error;
+        table_not_found ->
+            throw(#'TableNotFoundException'{});
         TableAtom ->
             ReadOptions = parse_get_options(Opts),
             case catch brick_simple:get(TableAtom, Key, ReadOptions, ?TIMEOUT) of
@@ -214,9 +240,9 @@ get_kv(Table, Key, #'GetOptions'{}=Opts) ->
                     #'GetResponse'{timestamp=TS, value=Val, exp_time=ExpTime,
                                    proplist=to_prop_list(Properties)};
                 key_not_exist ->
-                    throw(#'KeyNotExistsException'{key=Key});
+                    throw(#'KeyNotExistsException'{});
                 {ts_error, TS} ->
-                    throw(#'TSErrorException'{key=Key, timestamp=TS});
+                    throw(#'TSErrorException'{timestamp=TS});
                 invalid_flag_present ->
                     throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
@@ -232,13 +258,14 @@ get_kv(Table, Key, #'GetOptions'{}=Opts) ->
 -spec get_many(binary(), binary(), non_neg_integer(), 'GetManyOptions'()) -> term().
 get_many(Table, Key, MaxKeys, #'GetManyOptions'{}=Opts) ->
     case table(Table) of
-        undefined ->
-            error;
+        table_not_found ->
+            throw(#'TableNotFoundException'{});
         TableAtom ->
             ReadOptions = parse_get_many_options(Opts),
             case catch brick_simple:get_many(TableAtom, Key, MaxKeys, ReadOptions, ?TIMEOUT) of
-                ok ->
-                    {ok, ok};
+                {ok, {GetResults, IsTruncated}} ->
+                    KeyValues = [ translate_get_many_result(GR) || GR <- GetResults ],
+                    #'GetManyResponse'{key_values=KeyValues, is_truncated=IsTruncated};
                 invalid_flag_present ->
                     throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
@@ -258,21 +285,32 @@ get_many(Table, Key, MaxKeys, #'GetManyOptions'{}=Opts) ->
 -spec do_ops(binary(), ['Op'()], 'DoOptions'()) -> ok.
 do_ops(Table, DoOpList, #'DoOptions'{}=Opts) ->
     case table(Table) of
-        undefined ->
-            error;
+        table_not_found ->
+            throw(#'TableNotFoundException'{});
         TableAtom ->
-            DoOpList1 = lists:map(fun do_op/1, DoOpList),
+            {DoOpTypes, DoOpList1} = lists:unzip(lists:map(fun do_op/1, DoOpList)),
             DoOptions = parse_do_options(Opts),
             case catch brick_simple:do(TableAtom, DoOpList1, DoOptions, ?TIMEOUT) of
-                DoRes when is_list(DoRes) ->
-                    io:format("DoRes: ~p~n", [DoRes]),
-                    %% DoRes;
-                    undefined;
+                DoResList when is_list(DoResList) ->
+                    %% io:format("DoRes: ~p~n", [DoResList]),
+                    DoOpTypes1 = case hd(DoOpTypes) of
+                                     txn ->
+                                         tl(DoOpTypes);
+                                     _ ->
+                                         DoOpTypes
+                                 end,
+                    DoResults = [ do_result(T, R) || {T, R} <- lists:zip(DoOpTypes1, DoResList) ],
+                    #'DoResponse'{results=DoResults};
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
-                {txn_fail, [{Index, {key_exists, _TS}}]} ->
-                    throw(#'TransactionFailureException'{do_op_index=Index,
-                                                         failure= <<"KeyExists">>});
+                {txn_fail, [{Index, {key_exists, TS}}]} ->
+                    throw(#'TransactionFailureException'{
+                             do_op_index=Index,
+                             do_result=#'DoResult'{result_code=?KeyExistsException,
+                                                   key_exists=
+                                                       #'KeyExistsResult'{timestamp=TS}
+                                                  }
+                            });
                 invalid_flag_present ->
                     throw(#'InvalidOptionPresentException'{});
                 {'EXIT', {timeout, _}} ->
@@ -283,65 +321,110 @@ do_ops(Table, DoOpList, #'DoOptions'{}=Opts) ->
             end
     end.
 
--spec do_op('Op'()) -> term().
+-spec do_op('Op'()) -> {do_op_type(), term()}.
 do_op(#'Op'{txn=#'DoTransaction'{},
           add_kv=undefined, replace_kv=undefined, set_kv=undefined, rename_kv=undefined,
           get_kv=undefined, get_many=undefined, delete_kv=undefined}) ->
-    brick_server:make_txn();
+    {txn, brick_server:make_txn()};
 do_op(#'Op'{add_kv=#'DoAdd'{key=Key, value=Value, properties=PropList, options=Opts},
           txn=undefined, replace_kv=undefined, set_kv=undefined, rename_kv=undefined,
           get_kv=undefined, get_many=undefined, delete_kv=undefined}) ->
     Properties = properties(PropList),
     {ExpTime, WriteOptions} = parse_add_options(Opts),
-    brick_server:make_add(Key, Value, ExpTime, Properties ++ WriteOptions);
+    {mutation, brick_server:make_add(Key, Value, ExpTime, Properties ++ WriteOptions)};
 do_op(#'Op'{replace_kv=#'DoReplace'{key=Key, value=Value, properties=PropList, options=Opts},
           txn=undefined, add_kv=undefined, set_kv=undefined, rename_kv=undefined,
           get_kv=undefined, get_many=undefined, delete_kv=undefined}) ->
     Properties = properties(PropList),
     {ExpTime, WriteOptions} = parse_update_options(Opts),
-    brick_server:make_replace(Key, Value, ExpTime, Properties ++ WriteOptions);
+    {mutation, brick_server:make_replace(Key, Value, ExpTime, Properties ++ WriteOptions)};
 do_op(#'Op'{rename_kv=#'DoRename'{key=Key, new_key=NewKey, properties=PropList, options=Opts},
           txn=undefined, add_kv=undefined, replace_kv=undefined, set_kv=undefined,
           get_kv=undefined, get_many=undefined, delete_kv=undefined}) ->
     Properties = properties(PropList),
     {ExpTime, WriteOptions} = parse_update_options(Opts),
-    brick_server:make_rename(Key, NewKey, ExpTime, Properties ++ WriteOptions);
+    {mutation, brick_server:make_rename(Key, NewKey, ExpTime, Properties ++ WriteOptions)};
 do_op(#'Op'{set_kv=#'DoSet'{key=Key, value=Value, properties=PropList, options=Opts},
           txn=undefined, add_kv=undefined, replace_kv=undefined, rename_kv=undefined,
           get_kv=undefined, get_many=undefined, delete_kv=undefined}) ->
     Properties = properties(PropList),
     {ExpTime, WriteOptions} = parse_update_options(Opts),
-    brick_server:make_set(Key, Value, ExpTime, Properties ++ WriteOptions);
+    {mutation, brick_server:make_set(Key, Value, ExpTime, Properties ++ WriteOptions)};
 do_op(#'Op'{delete_kv=#'DoDelete'{key=Key, options=Opts},
           txn=undefined, add_kv=undefined, replace_kv=undefined, set_kv=undefined,
           rename_kv=undefined, get_kv=undefined, get_many=undefined}) ->
     DeleteOptions = parse_delete_options(Opts),
-    brick_server:make_delete(Key, DeleteOptions);
+    {deletion, brick_server:make_delete(Key, DeleteOptions)};
 do_op(#'Op'{get_kv=#'DoGet'{key=Key, options=Opts},
           txn=undefined, add_kv=undefined, replace_kv=undefined, set_kv=undefined,
           rename_kv=undefined, get_many=undefined, delete_kv=undefined}) ->
     GetOptions = parse_get_options(Opts),
-    brick_server:make_get(Key, GetOptions);
+    {get, brick_server:make_get(Key, GetOptions)};
 do_op(#'Op'{get_many=#'DoGetMany'{key=Key, max_keys=MaxKeys, options=Opts},
           txn=undefined, add_kv=undefined, replace_kv=undefined, set_kv=undefined,
           rename_kv=undefined, get_kv=undefined, delete_kv=undefined}) ->
     GetManyOptions = parse_get_many_options(Opts),
-    brick_server:make_get_many(Key, MaxKeys, GetManyOptions).
+    {get_many, brick_server:make_get_many(Key, MaxKeys, GetManyOptions)}.
+
+
+-spec translate_get_result(term()) -> 'GetResponse'().
+translate_get_result({ok, TS, Val}) ->
+    #'GetResponse'{timestamp=TS, value=Val};
+translate_get_result({ok, TS}) ->
+    #'GetResponse'{timestamp=TS};
+translate_get_result({ok, TS, ExpTime, Properties}) ->
+    #'GetResponse'{timestamp=TS, exp_time=ExpTime,
+                   proplist=to_prop_list(Properties)};
+translate_get_result({ok, TS, Val, ExpTime, Properties}) ->
+    #'GetResponse'{timestamp=TS, value=Val, exp_time=ExpTime,
+                   proplist=to_prop_list(Properties)}.
+
+-spec translate_get_many_result(term()) -> 'KeyValue'().
+translate_get_many_result({Key, TS, Val}) ->
+    #'KeyValue'{key=Key, timestamp=TS, value=Val};
+translate_get_many_result({Key, TS}) ->
+    #'KeyValue'{key=Key, timestamp=TS};
+translate_get_many_result({Key, TS, ExpTime, Properties}) ->
+    #'KeyValue'{key=Key, timestamp=TS, exp_time=ExpTime,
+                proplist=to_prop_list(Properties)};
+translate_get_many_result({key=Key, TS, Val, ExpTime, Properties}) ->
+    #'KeyValue'{key=Key, timestamp=TS, value=Val, exp_time=ExpTime,
+                proplist=to_prop_list(Properties)}.
+
+-spec do_result(do_op_type(), term()) -> 'DoResult'().
+do_result(_, {tserror, TS}) ->
+    #'DoResult'{result_code=?TSError,
+                ts_error=#'TSErrorResult'{timestamp=TS}
+               };
+do_result(_, {key_exists, TS}) ->
+    #'DoResult'{result_code=?KeyExistsException,
+                key_exists=#'KeyExistsResult'{timestamp=TS}
+               };
+do_result(_, key_not_exist) ->
+    #'DoResult'{result_code=?KeyNotExistsException};
+do_result(_, invalid_flag_present) ->
+    #'DoResult'{result_code=?InvalidOptionPresentException};
+do_result(deletion, ok) ->
+    #'DoResult'{result_code=?DeletionOK};
+do_result(mutation, {ok, TS}) ->
+    #'DoResult'{result_code=?MutationOK,
+                mutate_kv=#'MutationResult'{timestamp=TS}};
+do_result(get, GetResult) ->
+    #'DoResult'{result_code=?GetOK,
+                get_kv=translate_get_result(GetResult)
+               };
+do_result(get_many, {ok, GetResults, IsTruncated}) ->
+    KeyValues = [ translate_get_many_result(GR) || GR <- GetResults ],
+    #'DoResult'{result_code=?GetManyOK,
+                get_many=#'GetManyResponse'{key_values=KeyValues, is_truncated=IsTruncated}
+               }.
+
 
 %%--------------------------------------------------------------------
 %% Internal functions - Common utilities
 %%--------------------------------------------------------------------
 
-%% @TODO
--type add_option()      :: term().
--type delete_option()   :: term().
--type do_option()       :: term().
--type get_many_option() :: term().
--type get_option()      :: term().
--type update_option()   :: term().
--type exp_time()        :: integer().
-
--spec table(binary()) -> atom() | 'undefined'.
+-spec table(binary()) -> atom() | 'table_not_found'.
 table(Table) ->
     try
         list_to_existing_atom(binary_to_list(Table)) of
@@ -349,15 +432,19 @@ table(Table) ->
             Atom
     catch
         _:_ ->
-            undefined
+            table_not_found
     end.
 
--spec parse_add_options(#'AddOptions'{}) -> {exp_time(), [add_option()]}.
+-spec parse_add_options('undefined' | #'AddOptions'{}) -> {exp_time(), [add_option()]}.
+parse_add_options(undefined) ->
+    {exp_time(undefined), []};
 parse_add_options(#'AddOptions'{exp_time=ExpTime, value_in_ram=ValueInRam}) ->
     Opts = [ value_in_ram || ValueInRam ],
     {exp_time(ExpTime), Opts}.
 
--spec parse_update_options(#'UpdateOptions'{}) -> {exp_time(), [update_option()]}.
+-spec parse_update_options('undefined' | #'UpdateOptions'{}) -> {exp_time(), [update_option()]}.
+parse_update_options(undefined) ->
+    {exp_time(undefined), []};
 parse_update_options(#'UpdateOptions'{exp_time=ExpTime,
                                       test_set=TestSet,
                                       exp_time_directive=ExpTimeDirect,
@@ -369,7 +456,9 @@ parse_update_options(#'UpdateOptions'{exp_time=ExpTime,
         ++ [ value_in_ram || ValueInRam ],
     {exp_time(ExpTime), Opts}.
 
--spec parse_delete_options('DeleteOptions'()) -> [delete_option()].
+-spec parse_delete_options('undefined' | 'DeleteOptions'()) -> [delete_option()].
+parse_delete_options(undefined) ->
+    {exp_time(undefined), []};
 parse_delete_options(#'DeleteOptions'{test_set=TestSet,
                                       must_exist=MustExist,
                                       must_not_exist=MustNotExist}) ->
@@ -377,7 +466,9 @@ parse_delete_options(#'DeleteOptions'{test_set=TestSet,
         ++ [ must_exist || MustExist ]
         ++ [ must_not_exist || MustNotExist ].
 
--spec parse_get_options('GetOptions'()) -> [get_option()].
+-spec parse_get_options('undefined' | 'GetOptions'()) -> [get_option()].
+parse_get_options(undefined) ->
+    {exp_time(undefined), []};
 parse_get_options(#'GetOptions'{test_set=TestSet,
                                 is_witness=IsWitness,
                                 get_all_attribs=GetAllAttribs,
@@ -389,7 +480,9 @@ parse_get_options(#'GetOptions'{test_set=TestSet,
         ++ [ must_exist || MustExist ]
         ++ [ must_not_exist || MustNotExist ].
 
--spec parse_get_many_options('GetManyOptions'()) -> [get_many_option()].
+-spec parse_get_many_options('undefined' | 'GetManyOptions'()) -> [get_many_option()].
+parse_get_many_options(undefined) ->
+    {exp_time(undefined), []};
 parse_get_many_options(#'GetManyOptions'{is_witness=IsWitness,
                                          get_all_attribs=GetAllAttribs,
                                          max_bytes=MaxBytes,
@@ -399,7 +492,9 @@ parse_get_many_options(#'GetManyOptions'{is_witness=IsWitness,
         ++ [ {max_bytes, MaxBytes} || MaxBytes =/= undefined ]
         ++ [ {max_num, MaxNum} || MaxNum =/= undefined ].
 
--spec parse_do_options('DoOptions'()) -> [do_option()].
+-spec parse_do_options('undefined' | 'DoOptions'()) -> [do_option()].
+parse_do_options(undefined) ->
+    {exp_time(undefined), []};
 parse_do_options(#'DoOptions'{fail_if_wrong_role=FailIfWrongRole,
                               ignore_role=IgnoreRole}) ->
     [ fail_if_wrong_role || FailIfWrongRole ]
