@@ -77,6 +77,8 @@ add_kv(Table, Key, Value, PropList, #'AddOptions'{}=Opts) ->
                     TS;
                 {key_exists, TS} ->
                     throw(#'KeyExistsException'{key=Key, timestamp=TS});
+                invalid_flag_present ->
+                    throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
@@ -103,6 +105,8 @@ replace_kv(Table, Key, Value, PropList, #'UpdateOptions'{}=Opts) ->
                     throw(#'KeyNotExistsException'{key=Key});
                 {ts_error, TS} ->
                     throw(#'TSErrorException'{key=Key, timestamp=TS});
+                invalid_flag_present ->
+                    throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
@@ -127,6 +131,8 @@ rename_kv(Table, Key, NewKey, PropList, #'UpdateOptions'{}=Opts) ->
                     TS;
                 {ts_error, TS} ->
                     {ts_error, TS};
+                invalid_flag_present ->
+                    throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
@@ -151,6 +157,8 @@ set_kv(Table, Key, Value, PropList, #'UpdateOptions'{}=Opts) ->
                     TS;
                 {ts_error, TS} ->
                     throw(#'TSErrorException'{key=Key, timestamp=TS});
+                invalid_flag_present ->
+                    throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
@@ -175,6 +183,8 @@ delete_kv(Table, Key, #'DeleteOptions'{}=Opts) ->
                     throw(#'KeyNotExistsException'{key=Key});
                 {ts_error, TS} ->
                     throw(#'TSErrorException'{key=Key, timestamp=TS});
+                invalid_flag_present ->
+                    throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
@@ -207,6 +217,8 @@ get_kv(Table, Key, #'GetOptions'{}=Opts) ->
                     throw(#'KeyNotExistsException'{key=Key});
                 {ts_error, TS} ->
                     throw(#'TSErrorException'{key=Key, timestamp=TS});
+                invalid_flag_present ->
+                    throw(#'InvalidOptionPresentException'{});
                 {txn_fail, [{_Integer, brick_not_available}]} ->
                     brick_not_available;
                 {'EXIT', {timeout, _}} ->
@@ -261,6 +273,8 @@ do_ops(Table, DoOpList, #'DoOptions'{}=Opts) ->
                 {txn_fail, [{Index, {key_exists, _TS}}]} ->
                     throw(#'TransactionFailureException'{do_op_index=Index,
                                                          failure= <<"KeyExists">>});
+                invalid_flag_present ->
+                    throw(#'InvalidOptionPresentException'{});
                 {'EXIT', {timeout, _}} ->
                     throw(#'TimedOutException'{});
                 Unknown ->
