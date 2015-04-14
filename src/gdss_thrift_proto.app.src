@@ -31,7 +31,7 @@
             ]},
 
   {env, [%% Hibari Thrift protocol server
-         {thrift_tcp_port, 7601}   %% @TODO: Change this to 7600
+         {thrift_tcp_port, 7600}
          %% {thrift_maxconn, 10000},
          %% {thrift_process_options, []},
          %% {thrift_timeout, 60000}

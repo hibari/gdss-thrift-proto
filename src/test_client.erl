@@ -41,7 +41,7 @@
 %% {exception,{xception,1001,<<"Xception">>}}
 
 t1() ->
-    t1(7601).
+    t1(7600).
 
 t1(Port) ->
     {ok, C0} = thrift_client_util:new("localhost", Port, hibari_thrift, []),
