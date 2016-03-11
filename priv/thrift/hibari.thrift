@@ -1,6 +1,6 @@
 #!/usr/local/bin/thrift --gen erl --gen go --gen hs --gen java --gen js:node --gen php --gen py --gen rb
 #----------------------------------------------------------------------
-# Copyright (c) 2008-2015 Hibari developers.  All rights reserved.
+# Copyright (c) 2008-2016 Hibari developers.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
